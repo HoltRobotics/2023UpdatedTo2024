@@ -5,10 +5,36 @@ import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
+import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
+import edu.wpi.first.wpilibj2.command.WaitCommand;
 import edu.wpi.first.wpilibj2.command.button.JoystickButton;
-
+import edu.wpi.first.wpilibj2.command.button.POVButton;
 import frc.robot.autos.*;
 import frc.robot.commands.*;
+import frc.robot.commands.Arm.DownArm;
+import frc.robot.commands.Arm.UpArm;
+import frc.robot.commands.Combo.DropStage;
+import frc.robot.commands.Combo.FloorHorizontal;
+import frc.robot.commands.Combo.FloorVertical;
+import frc.robot.commands.Combo.SlideStage;
+import frc.robot.commands.Combo.Stage1;
+import frc.robot.commands.Combo.Stage2;
+import frc.robot.commands.Combo.Stage3;
+import frc.robot.commands.Combo.StowArm;
+import frc.robot.commands.Elevator.Down;
+import frc.robot.commands.Elevator.LowerCone;
+import frc.robot.commands.Elevator.RaiseCone;
+import frc.robot.commands.Elevator.Up;
+import frc.robot.commands.Pneumatics.BuddyDown;
+import frc.robot.commands.Pneumatics.BuddyUp;
+import frc.robot.commands.Pneumatics.CloseClaw;
+import frc.robot.commands.Pneumatics.OpenClaw;
+import frc.robot.commands.Pneumatics.ToggleTilt;
+import frc.robot.commands.Swerve.Balance;
+import frc.robot.commands.Swerve.FastBalance;
+import frc.robot.commands.Swerve.ResetEncoders;
+import frc.robot.commands.Swerve.SlowDrive;
+import frc.robot.commands.Swerve.ZeroGyro;
 import frc.robot.subsystems.*;
 
 /**
@@ -19,7 +45,8 @@ import frc.robot.subsystems.*;
  */
 public class RobotContainer {
     /* Controllers */
-    private final Joystick driver = new Joystick(0);
+    private final Joystick m_driver = new Joystick(Constants.kDriverPort);
+    private final Joystick m_operator = new Joystick(Constants.kOperatorPort);
 
     /* Drive Controls */
     private final int translationAxis = XboxController.Axis.kLeftY.value;
@@ -27,22 +54,25 @@ public class RobotContainer {
     private final int rotationAxis = XboxController.Axis.kRightX.value;
 
     /* Driver Buttons */
-    private final JoystickButton zeroGyro = new JoystickButton(driver, XboxController.Button.kY.value);
-    private final JoystickButton robotCentric = new JoystickButton(driver, XboxController.Button.kLeftBumper.value);
+    private final JoystickButton zeroGyro = new JoystickButton(m_driver, XboxController.Button.kY.value);
+    private final JoystickButton robotCentric = new JoystickButton(m_driver, XboxController.Button.kLeftBumper.value);
 
     /* Subsystems */
-    private final Swerve s_Swerve = new Swerve();
+    private final Swerve m_swerve = new Swerve();
+    private final ArmProfiled m_arm = new ArmProfiled();
+    private final ElevatorProfiled m_lift = new ElevatorProfiled();
+    private final Pneumatics m_air = new Pneumatics();
 
 
     /** The container for the robot. Contains subsystems, OI devices, and commands. */
     public RobotContainer() {
-        s_Swerve.setDefaultCommand(
+        m_swerve.setDefaultCommand(
             new TeleopSwerve(
-                s_Swerve, 
-                () -> -driver.getRawAxis(translationAxis), 
-                () -> -driver.getRawAxis(strafeAxis), 
-                () -> -driver.getRawAxis(rotationAxis), 
-                () -> robotCentric.getAsBoolean()
+                () -> -m_driver.getRawAxis(1),     // Translation
+                () -> -m_driver.getRawAxis(0),     // Strafe
+                () -> -m_driver.getRawAxis(2),    // Rotation
+                () -> m_driver.getRawButton(5), // Field Centric
+                m_swerve
             )
         );
 
@@ -58,7 +88,31 @@ public class RobotContainer {
      */
     private void configureButtonBindings() {
         /* Driver Buttons */
-        zeroGyro.onTrue(new InstantCommand(() -> s_Swerve.zeroHeading()));
+        new POVButton(m_driver, 180).whileTrue(new Down(m_lift));
+        new POVButton(m_driver, 0).whileTrue(new Up(m_lift));
+        new POVButton(m_driver, 90).whileTrue(new DownArm(m_arm));
+        new POVButton(m_driver, 270).whileTrue(new UpArm(m_arm));
+
+        new JoystickButton(m_driver, 6).toggleOnFalse(new SlowDrive(m_swerve));
+        new JoystickButton(m_driver, 1).onTrue(new ToggleTilt(m_air));
+        new JoystickButton(m_driver, 14).onTrue(new ZeroGyro(m_swerve));
+        new JoystickButton(m_driver, 9).onTrue(new ResetEncoders(m_swerve));
+        new JoystickButton(m_driver, 2).whileTrue(new OpenClaw(m_air)).whileFalse(new CloseClaw(m_air));
+
+        new JoystickButton(m_operator, 5).whileTrue(new SequentialCommandGroup(new FastBalance(m_swerve), new Balance(m_swerve)));
+
+        new JoystickButton(m_operator, 2).onTrue(new StowArm(m_arm, m_lift, m_air, m_swerve));
+        new JoystickButton(m_operator, 1).onTrue(new SlideStage(m_arm, m_lift, m_air, m_swerve));
+        new JoystickButton(m_operator, 3).onTrue(new DropStage(m_arm, m_lift, m_air, m_swerve));
+        // new JoystickButton(m_operator, 5).onTrue(new ClawUp(m_air));
+        new JoystickButton(m_operator, 11).onTrue(new Stage1(m_arm, m_lift, m_air, m_swerve));
+        new JoystickButton(m_operator, 13).onTrue(new Stage2(m_arm, m_lift, m_air, m_swerve));
+        new JoystickButton(m_operator, 15).onTrue(new Stage3(m_arm, m_lift, m_air, m_swerve));
+        new JoystickButton(m_operator, 12).onTrue(new FloorHorizontal(m_arm, m_lift, m_air, m_swerve));
+        new JoystickButton(m_operator, 14).onTrue(new FloorVertical(m_arm, m_lift, m_air, m_swerve));
+        new JoystickButton(m_operator, 4).onTrue(new RaiseCone(m_lift));
+        new JoystickButton(m_operator, 9).onTrue(new LowerCone(m_lift));
+        new JoystickButton(m_operator, 10).onTrue(new BuddyDown(m_air)).onFalse(new BuddyUp(m_air));
     }
 
     /**
@@ -68,6 +122,6 @@ public class RobotContainer {
      */
     public Command getAutonomousCommand() {
         // An ExampleCommand will run in autonomous
-        return new exampleAuto(s_Swerve);
+        return new WaitCommand(15);
     }
 }
