@@ -22,7 +22,7 @@ public class Swerve extends SubsystemBase {
     public SwerveDriveOdometry swerveOdometry;
     public SwerveModule[] m_swerveMods;
     public Pigeon2 m_gyro;
-    public double m_slowDrive;
+    public double m_slowDrive = 1;
 
     public Swerve() {
         m_gyro = new Pigeon2(Constants.Swerve.pigeonID);

@@ -2,14 +2,13 @@ package frc.robot;
 
 import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.Joystick;
+import edu.wpi.first.wpilibj.PS5Controller;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import edu.wpi.first.wpilibj2.command.WaitCommand;
 import edu.wpi.first.wpilibj2.command.button.JoystickButton;
 import edu.wpi.first.wpilibj2.command.button.POVButton;
-import frc.robot.autos.*;
 import frc.robot.commands.*;
 import frc.robot.commands.Arm.DownArm;
 import frc.robot.commands.Arm.UpArm;
@@ -45,17 +44,8 @@ import frc.robot.subsystems.*;
  */
 public class RobotContainer {
     /* Controllers */
-    private final Joystick m_driver = new Joystick(Constants.kDriverPort);
+    private final PS5Controller m_driver = new PS5Controller(Constants.kDriverPort);
     private final Joystick m_operator = new Joystick(Constants.kOperatorPort);
-
-    /* Drive Controls */
-    private final int translationAxis = XboxController.Axis.kLeftY.value;
-    private final int strafeAxis = XboxController.Axis.kLeftX.value;
-    private final int rotationAxis = XboxController.Axis.kRightX.value;
-
-    /* Driver Buttons */
-    private final JoystickButton zeroGyro = new JoystickButton(m_driver, XboxController.Button.kY.value);
-    private final JoystickButton robotCentric = new JoystickButton(m_driver, XboxController.Button.kLeftBumper.value);
 
     /* Subsystems */
     private final Swerve m_swerve = new Swerve();
@@ -68,10 +58,10 @@ public class RobotContainer {
     public RobotContainer() {
         m_swerve.setDefaultCommand(
             new TeleopSwerve(
-                () -> -m_driver.getRawAxis(1),     // Translation
-                () -> -m_driver.getRawAxis(0),     // Strafe
-                () -> -m_driver.getRawAxis(2),    // Rotation
-                () -> m_driver.getRawButton(5), // Field Centric
+                () -> -m_driver.getLeftY(),     // Translation
+                () -> -m_driver.getLeftX(),     // Strafe
+                () -> -m_driver.getRightX(),    // Rotation
+                () -> m_driver.getCircleButton(), // Field Centric
                 m_swerve
             )
         );
